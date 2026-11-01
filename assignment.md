@@ -23,7 +23,7 @@ Package, run and deploy a two-service microservices system - the `microservices-
    - Stop only user-service, try to create an order, and record the status code and message you get
 
 2. **Publish and Deploy to Railway**
-   - Build both images for `linux/amd64` and push them to Docker Hub as `YOUR_DOCKERHUB_USERNAME/user-service:v4.16.0` and `YOUR_DOCKERHUB_USERNAME/order-service:v4.16.0`
+   - Build both images for `linux/amd64` and push them to Docker Hub as `YOUR_DOCKERHUB_USERNAME/user-service:v4.16.1` and `YOUR_DOCKERHUB_USERNAME/order-service:v4.16.1`
    - In **one** Railway project, deploy both images as two services named `user-service` and `order-service`
    - Set `USER_SERVICE_URL` on order-service so it calls user-service over Railway's **private network**
    - Generate public domains and test the live system: create users, create a valid order (`201`) and an invalid order (`400`)

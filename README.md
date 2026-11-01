@@ -30,7 +30,7 @@ By the end of this lesson, students will be able to:
 | 25 min | Part 3: Docker Compose | Write `docker-compose.yml`: two services, host ports 8081/8082, `USER_SERVICE_URL=http://user-service:8080`, healthcheck + `depends_on: condition: service_healthy`; `docker compose up --detach --build`, `ps`, `logs` |
 | 25 min | Part 4: Test Locally + Activity | Create users and orders (201 / 400) in Postman or curl; Activity - stop user-service, observe 503, restart, discuss sync vs async |
 | 10 min | Break | - |
-| 20 min | Part 5: Publish to Docker Hub | `docker build --platform linux/amd64` + `docker push` for `user-service:v4.16.0` and `order-service:v4.16.0`; instructor images as fallback |
+| 20 min | Part 5: Publish to Docker Hub | `docker build --platform linux/amd64` + `docker push` for `user-service:v4.16.1` and `order-service:v4.16.1`; instructor images as fallback |
 | 35 min | Part 6: Deploy to Railway | One project, two services from Docker Hub images; service names; `USER_SERVICE_URL=http://user-service.railway.internal:8080`; generate domains; test live; Compose vs Railway mapping; Render as an alternative (no private network on free plan, spin-down) |
 | 10 min | Part 7 & 8: Recap + Advanced Concepts | Architecture recap local vs Railway; DNS as simple service discovery; service registries and API Gateway (awareness) |
 | 10 min | Part 9: Clean Up + Wrap-up | `docker compose down`; delete the Railway project to save credit; key takeaways |

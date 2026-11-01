@@ -488,8 +488,8 @@ Docker Compose built the images **on your computer**. Railway can't see them the
 
 ```
 Your computer                 Docker Hub                                Railway
-docker build + push  ───►  YOUR_USERNAME/user-service:v4.16.0   ───►  user-service
-                           YOUR_USERNAME/order-service:v4.16.0  ───►  order-service
+docker build + push  ───►  YOUR_USERNAME/user-service:v4.16.1   ───►  user-service
+                           YOUR_USERNAME/order-service:v4.16.1  ───►  order-service
 ```
 
 ### Step 1: Log In
@@ -505,40 +505,42 @@ docker login
 From the project root (replace `YOUR_DOCKERHUB_USERNAME`):
 
 ```bash
-docker build --platform linux/amd64 -t YOUR_DOCKERHUB_USERNAME/user-service:v4.16.0 ./user-service
-docker push YOUR_DOCKERHUB_USERNAME/user-service:v4.16.0
+docker build --platform linux/amd64 -t YOUR_DOCKERHUB_USERNAME/user-service:v4.16.1 ./user-service
+docker push YOUR_DOCKERHUB_USERNAME/user-service:v4.16.1
 
-docker build --platform linux/amd64 -t YOUR_DOCKERHUB_USERNAME/order-service:v4.16.0 ./order-service
-docker push YOUR_DOCKERHUB_USERNAME/order-service:v4.16.0
+docker build --platform linux/amd64 -t YOUR_DOCKERHUB_USERNAME/order-service:v4.16.1 ./order-service
+docker push YOUR_DOCKERHUB_USERNAME/order-service:v4.16.1
 ```
 
 | Part of the command | Why |
 |---|---|
 | `--platform linux/amd64` | Railway runs on `amd64` servers. Without it, an Apple Silicon Mac builds an ARM image that crashes with `exec format error` |
-| `-t YOUR_DOCKERHUB_USERNAME/user-service:v4.16.0` | One Docker Hub **repository per service**, tagged with the lesson version |
+| `-t YOUR_DOCKERHUB_USERNAME/user-service:v4.16.1` | One Docker Hub **repository per service**, tagged `v4.16.1` |
 | `./user-service` | The build context - the folder with that service's Dockerfile |
 
 > On Apple Silicon these builds are slower because Docker emulates `amd64`.
+
+> **Why `v4.16.1` and not `v4.16.0`?** In the `microservices-demo` repository, tag `v4.16.0` is the **starter** code you downloaded - it has no Dockerfiles. Your images include the Dockerfiles you wrote, which matches the **solution** tag `v4.16.1`. Tagging images with the version of the code they were built from avoids mixing the two up.
 
 ---
 
 ### Step 3: Check Docker Hub
 
 1. Go to [https://hub.docker.com](https://hub.docker.com)
-2. You should see **two** repositories: `user-service` and `order-service`, each with tag `v4.16.0`
+2. You should see **two** repositories: `user-service` and `order-service`, each with tag `v4.16.1`
 3. Check both are **Public** (Railway can't pull private images without extra setup)
 
 <details>
-<summary>Build or push not working? Use the instructor's images instead.</summary>
+<summary>Build or push not working? Use the course images instead.</summary>
 
-If you can't build or push your own images in time, use the instructor's public images in Part 6:
+If you can't build or push your own images in time, use the course's public images in Part 6. They are hosted on **GitHub Container Registry** (`ghcr.io`) instead of Docker Hub - Railway can pull from both:
 
 ```
-jsstrn/user-service:v4.16.0
-jsstrn/order-service:v4.16.0
+ghcr.io/aie-devops/user-service:v4.16.1
+ghcr.io/aie-devops/order-service:v4.16.1
 ```
 
-They are built from the same `v4.16.0` code.
+Enter the **full** name, including `ghcr.io/` - without it, Railway looks on Docker Hub. The images are built from the same code for both `linux/amd64` and `arm64`.
 
 </details>
 
@@ -552,7 +554,7 @@ On Railway, one **project** holds the whole system and each microservice is its 
 |---|---|
 | `docker-compose.yml` | A Railway **project** |
 | `services: user-service:` | A Railway **service** named `user-service` |
-| `build: ./user-service` | **Source image** `YOUR_USERNAME/user-service:v4.16.0` from Docker Hub |
+| `build: ./user-service` | **Source image** `YOUR_USERNAME/user-service:v4.16.1` from Docker Hub |
 | `environment:` | The service's **Variables** tab |
 | `ports: "8081:8080"` | **Generate Domain** with port `8080` (public HTTPS URL) |
 | Service name as hostname (`user-service`) | **Private network** hostname `user-service.railway.internal` |
@@ -563,7 +565,7 @@ On Railway, one **project** holds the whole system and each microservice is its 
 2. Select **"Deploy from Docker Image"**
 3. Enter your image:
    ```
-   YOUR_DOCKERHUB_USERNAME/user-service:v4.16.0
+   YOUR_DOCKERHUB_USERNAME/user-service:v4.16.1
    ```
 4. Click **"Deploy"**
 5. If you see a warning that the project is temporary, click **"Claim Project"**
@@ -594,7 +596,7 @@ Expected: `{"status":"UP"}`, then `201 Created`.
 1. In the **same project**, click **"+ Create"** (or right-click the canvas) → **"Docker Image"**
 2. Enter:
    ```
-   YOUR_DOCKERHUB_USERNAME/order-service:v4.16.0
+   YOUR_DOCKERHUB_USERNAME/order-service:v4.16.1
    ```
 3. Check the service name is `order-service`
 
@@ -765,7 +767,7 @@ Stops and removes the containers and the network that `up` created. The images s
 
 **Cause:** the image name or tag is wrong, or the Docker Hub repository is private.
 
-**Solution:** check the exact name on Docker Hub (`YOUR_DOCKERHUB_USERNAME/user-service:v4.16.0`) and make the repository **Public**.
+**Solution:** check the exact name on Docker Hub (`YOUR_DOCKERHUB_USERNAME/user-service:v4.16.1`) and make the repository **Public**.
 
 ---
 
