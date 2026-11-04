@@ -7,7 +7,7 @@ By the end of this lesson, you will be able to:
 1. **Containerize** two Spring Boot microservices with multi-stage Dockerfiles
 2. **Run and test** a multi-service system locally with Docker Compose, using service names, environment variables and healthchecks
 3. **Publish** each service's image to Docker Hub
-4. **Deploy** the services to Railway from Docker Hub and connect them over Railway's private network
+4. **Deploy** the services to a cloud platform (Railway or Render) from Docker Hub and connect them
 5. **Describe** Service Discovery and API Gateway as next steps beyond this foundation
 
 ---
@@ -17,10 +17,10 @@ By the end of this lesson, you will be able to:
 Before starting this lesson, ensure you have:
 
 - Completed Lesson 4.15 (Microservices Architecture - Part 1)
-- Completed Lesson 4.4 (multi-stage Dockerfiles), Lesson 4.6 (Docker Compose) and Lesson 4.10 (Docker Hub + Railway)
+- Completed Lesson 4.4 (multi-stage Dockerfiles), Lesson 4.6 (Docker Compose) and Lesson 4.10 (Docker Hub + Render or Railway)
 - Docker Desktop installed and running
 - A Docker Hub account
-- A Railway account (from Lesson 4.10)
+- A Railway or Render account (from Lesson 4.10)
 - Postman (or `curl` in your terminal)
 
 > **No Java or Maven needed on your computer today.** The multi-stage Dockerfiles you write run Maven inside Docker.
@@ -29,7 +29,7 @@ Before starting this lesson, ensure you have:
 
 ## Introduction
 
-In Lesson 4.15 you learned the theory of microservices. Today you'll **ship** a real microservices system - first on your own computer, then live on Railway.
+In Lesson 4.15 you learned the theory of microservices. Today you'll **ship** a real microservices system - first on your own computer, then live in the cloud (Railway, or Render as an alternative).
 
 You are the **DevOps engineer** on this team. The developers have already written two Spring Boot services. Your job is to package, run, publish and deploy them.
 
@@ -484,7 +484,7 @@ In Lesson 4.15 you learned that a **synchronous** call fails when the service it
 
 ## Part 5: Publish the Images to Docker Hub
 
-Docker Compose built the images **on your computer**. Railway can't see them there - it pulls images from a **registry**. You'll push both images to Docker Hub, just like devops-demo in Lesson 4.10.
+Docker Compose built the images **on your computer**. A hosting platform such as Railway or Render can't see them there - it pulls images from a **registry**. You'll push both images to Docker Hub, just like devops-demo in Lesson 4.10.
 
 ```
 Your computer                 Docker Hub                                Railway
@@ -514,7 +514,7 @@ docker push YOUR_DOCKERHUB_USERNAME/order-service:v4.16.1
 
 | Part of the command | Why |
 |---|---|
-| `--platform linux/amd64` | Railway runs on `amd64` servers. Without it, an Apple Silicon Mac builds an ARM image that crashes with `exec format error` |
+| `--platform linux/amd64` | Railway and Render run on `amd64` servers. Without it, an Apple Silicon Mac builds an ARM image that crashes with `exec format error` |
 | `-t YOUR_DOCKERHUB_USERNAME/user-service:v4.16.1` | One Docker Hub **repository per service**, tagged `v4.16.1` |
 | `./user-service` | The build context - the folder with that service's Dockerfile |
 
@@ -528,25 +528,27 @@ docker push YOUR_DOCKERHUB_USERNAME/order-service:v4.16.1
 
 1. Go to [https://hub.docker.com](https://hub.docker.com)
 2. You should see **two** repositories: `user-service` and `order-service`, each with tag `v4.16.1`
-3. Check both are **Public** (Railway can't pull private images without extra setup)
+3. Check both are **Public** (platforms can't pull private images without extra setup)
 
 <details>
 <summary>Build or push not working? Use the course images instead.</summary>
 
-If you can't build or push your own images in time, use the course's public images in Part 6. They are hosted on **GitHub Container Registry** (`ghcr.io`) instead of Docker Hub - Railway can pull from both:
+If you can't build or push your own images in time, use the course's public images in Part 6. They are hosted on **GitHub Container Registry** (`ghcr.io`) instead of Docker Hub - Railway and Render can pull from both:
 
 ```
 ghcr.io/aie-devops/user-service:v4.16.1
 ghcr.io/aie-devops/order-service:v4.16.1
 ```
 
-Enter the **full** name, including `ghcr.io/` - without it, Railway looks on Docker Hub. The images are built from the same code for both `linux/amd64` and `arm64`.
+Enter the **full** name, including `ghcr.io/` - without it, the platform looks on Docker Hub. The images are built from the same code for both `linux/amd64` and `arm64`.
 
 </details>
 
 ---
 
 ## Part 6: Deploy to Railway
+
+> **Using Render instead?** Read the steps below for the idea, then see [Alternative Platform: Render](#alternative-platform-render) at the end of this part for what is different on Render's free plan.
 
 On Railway, one **project** holds the whole system and each microservice is its own **service**. Railway doesn't run your `docker-compose.yml` - you recreate the same setup in the dashboard.
 
@@ -722,6 +724,8 @@ docker compose down
 Stops and removes the containers and the network that `up` created. The images stay on your computer, so the next `up` is faster.
 
 **Railway:** to save your trial credit, open the project → **Settings** → **Danger** → **Delete Project** once you've finished (and taken any screenshots for the lesson exercise).
+
+**Render:** open each service → **Settings** → **Delete Web Service** once you've finished.
 
 ---
 

@@ -74,11 +74,11 @@ D - 200 OK
 
 ---
 
-Q7: Why are the images built with `--platform linux/amd64` before pushing them for Railway?
+Q7: Why are the images built with `--platform linux/amd64` before pushing them for Railway or Render?
 
 A - It makes the image smaller
 
-B - Railway runs on amd64 servers, and an ARM image built on Apple Silicon would fail with `exec format error`
+B - Railway and Render run on amd64 servers, and an ARM image built on Apple Silicon would fail with `exec format error`
 
 C - Docker Hub only accepts amd64 images
 
