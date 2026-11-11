@@ -4,7 +4,7 @@
 
 By the end of this lesson, you will be able to:
 
-1. **Containerize** two Spring Boot microservices with multi-stage Dockerfiles
+1. **Containerize** two Spring Boot microservices with multi-stage Dockerfiles, and use Docker's layer cache so dependencies are only downloaded when `pom.xml` changes
 2. **Run and test** a multi-service system locally with Docker Compose, using service names, environment variables and healthchecks
 3. **Publish** each service's image to Docker Hub
 4. **Deploy** the services to a cloud platform (Railway or Render) from Docker Hub and connect them
@@ -278,6 +278,146 @@ microservices-demo-4.16.0/
 
 ---
 
+### Step 5: Activity - Make Rebuilds Faster by Caching Dependencies **(15 minutes)**
+
+Every time you change your code and rebuild, Maven downloads **all** the dependencies again. Let's see it happen - then fix it with Docker's **layer cache**.
+
+**5.1: Build the User Service once**
+
+From the project root:
+
+```bash
+docker build -t user-service:latest ./user-service
+```
+
+`-t user-service:latest` names the image, like `devops-demo:latest` in earlier lessons.
+
+Watch the output: while the `RUN mvn clean package` step runs, lines like these scroll past as Maven downloads the dependencies:
+
+```
+Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/boot/...
+Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/boot/...
+```
+
+**5.2: Make a small change and build again**
+
+Add a comment to any Java file, for example at the top of `user-service/src/main/java/com/example/userservice/controller/UserController.java`:
+
+```java
+// Testing the Docker build cache
+```
+
+Then build again - and time it:
+
+```bash
+time docker build -t user-service:latest ./user-service
+```
+
+**What happens?** The `Downloading from central` lines scroll past again. One comment in one Java file made Maven download **everything** again.
+
+**Why?** Docker builds an image one instruction at a time and **caches** each step. It reuses a cached step only if **that step and every step before it** are unchanged:
+
+```
+COPY pom.xml .                      ✅ unchanged - cached
+COPY src ./src                      ❌ src changed - cache broken from here on
+RUN mvn clean package -DskipTests   ❌ runs again: downloads + compiles
+```
+
+Downloading the dependencies and compiling your code happen in the **same** step - so any code change repeats the download.
+
+**5.3: Download the dependencies in their own step**
+
+Change `user-service/Dockerfile` - only stage 1 changes:
+
+```diff
+ # Stage 1: Build the JAR with Maven
+ FROM maven:3.9-eclipse-temurin-21 AS build
+ WORKDIR /app
+ COPY pom.xml .
++RUN mvn dependency:go-offline
+ COPY src ./src
+ RUN mvn clean package -DskipTests
+```
+
+| Line | What it does |
+|---|---|
+| `COPY pom.xml .` | Copy **only** the list of dependencies first |
+| `RUN mvn dependency:go-offline` | Download every dependency and plugin the build needs - **before** any code is copied |
+| `COPY src ./src` | Now copy the code |
+| `RUN mvn clean package -DskipTests` | Compile and package - the dependencies are already there |
+
+**5.4: Build twice and compare**
+
+```bash
+# 1st build with the new Dockerfile - downloads everything once, in the new go-offline step
+time docker build -t user-service:latest ./user-service
+```
+
+Now change the comment in `UserController.java` again (for example `// Testing the cache - 2`) and build once more:
+
+```bash
+time docker build -t user-service:latest ./user-service
+```
+
+This time Docker marks the download step as **CACHED**, and no `Downloading from central` lines scroll past (a few plugin downloads may still appear):
+
+```
+ => CACHED [build 3/6] COPY pom.xml .
+ => CACHED [build 4/6] RUN mvn dependency:go-offline
+ => [build 5/6] COPY src ./src
+ => [build 6/6] RUN mvn clean package -DskipTests
+```
+
+Compare the `real` times from `time`:
+
+| Build | What runs | Maven step time (example) |
+|---|---|---|
+| Old Dockerfile, any code change | Download + compile, **every** time | ~18 s |
+| New Dockerfile, **1st** build | `go-offline` downloads **more** than the build needs, then compile | ~35 s - **slower**, once |
+| New Dockerfile, every **later** code change | `go-offline` **CACHED** (0 s), compile only | **~1.5 s** |
+
+Your times will differ with your network and computer - but the pattern is the same: one slower build, then every rebuild after a code change is much faster.
+
+> **Why is the first build slower?** `dependency:go-offline` downloads everything Maven **might** need - test libraries and plugins for steps we skip (like running tests), too - and starts Maven one extra time. You pay that cost **once**; every rebuild after a code change is faster.
+
+```
+COPY pom.xml .                      ✅ unchanged - cached
+RUN mvn dependency:go-offline       ✅ cached - no downloads
+COPY src ./src                      ❌ src changed - cache broken from here on
+RUN mvn clean package -DskipTests   runs again: compile only
+```
+
+**The rule:** put the things that change **least** (the dependency list) **before** the things that change **most** (your code).
+
+**When are the dependencies downloaded again?** Only when `pom.xml` changes - for example when you add a library or upgrade Spring Boot. That's exactly when they **should** be downloaded again.
+
+**5.5: Do the same for the Order Service**
+
+Add the same `RUN mvn dependency:go-offline` line to `order-service/Dockerfile`. Both Dockerfiles should now look like this:
+
+```dockerfile
+# Stage 1: Build the JAR with Maven
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# Stage 2: Run the JAR on a small Java runtime image
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8080
+CMD ["java", "-jar", "app.jar"]
+```
+
+> **Why no `-B` (batch mode)?** `-B` hides Maven's download progress. Today we **want** to see the `Downloading` lines - with the `CACHED` markers, they're how you can tell whether the cache worked.
+
+<!-- INSTRUCTOR: timings depend on the network and on Apple Silicon (no --platform here, so builds are native and quicker than in Part 5). dependency:go-offline doesn't resolve every plugin, so a few "Downloading" lines in the package step are normal. Optional extension: change pom.xml (e.g. add a dependency) and show the go-offline step re-running. The microservices-demo solution tag v4.16.1 has the old Dockerfiles - update it to match. -->
+
+---
+
 ## Part 3: Docker Compose
 
 One `docker build` + `docker run` per service gets tedious fast. Docker Compose builds and runs the **whole system** with one command.
@@ -364,7 +504,7 @@ docker compose up --detach --build
 
 **Why `--detach`?** Without it, Compose streams the logs of every container into your terminal and stops them all when you press `Ctrl+C`.
 
-The first build takes a few minutes while Maven downloads dependencies for both services.
+The first build takes a few minutes while Maven downloads dependencies for both services. After that, thanks to the `go-offline` step from Part 2, rebuilding after a code change skips the downloads.
 
 > ⚠️ **VS Code users:** if you see `Terminal will be reused by tasks, press any key to close it.`, **don't press any key** - the containers keep running. Open a new terminal.
 
@@ -518,7 +658,7 @@ docker push YOUR_DOCKERHUB_USERNAME/order-service:v4.16.1
 | `-t YOUR_DOCKERHUB_USERNAME/user-service:v4.16.1` | One Docker Hub **repository per service**, tagged `v4.16.1` |
 | `./user-service` | The build context - the folder with that service's Dockerfile |
 
-> On Apple Silicon these builds are slower because Docker emulates `amd64`.
+> On Apple Silicon these builds are slower because Docker emulates `amd64`. An `amd64` build also has its **own** cache, so the first one downloads the dependencies again - later `amd64` builds reuse them.
 
 > **Why `v4.16.1` and not `v4.16.0`?** In the `microservices-demo` repository, tag `v4.16.0` is the **starter** code you downloaded - it has no Dockerfiles. Your images include the Dockerfiles you wrote, which matches the **solution** tag `v4.16.1`. Tagging images with the version of the code they were built from avoids mixing the two up.
 
@@ -779,7 +919,7 @@ Stops and removes the containers and the network that `up` created. The images s
 
 ### What You Did
 
-- **Containerized** two microservices with the same multi-stage Dockerfile
+- **Containerized** two microservices with the same multi-stage Dockerfile - and cached the dependencies so code changes rebuild fast
 - **Ran** the whole system locally with one `docker-compose.yml` - service names, environment variables and a healthcheck
 - **Tested** inter-service calls, including what happens when a dependency is down
 - **Published** one image per service to Docker Hub
